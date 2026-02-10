@@ -33,6 +33,16 @@ static void print_vk_version(const uint32_t version)
                           VK_API_VERSION_PATCH(version));
 }
 
+static VkBool32 vk_debug_messenger_callback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData
+)
+{
+    return VK_FALSE;
+}
+
 int main(void)
 {
     atexit(cleanup);
