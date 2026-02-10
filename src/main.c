@@ -6,9 +6,13 @@
 #include <stdlib.h>
 
 VkLayerProperties* vk_instance_layer_properties = NULL;
+VkExtensionProperties* vk_instance_extension_properties = NULL;
 
 static void cleanup(void)
 {
+    free(vk_instance_extension_properties);
+    vk_instance_extension_properties = NULL;
+
     free(vk_instance_layer_properties);
     vk_instance_layer_properties = NULL;
 }
@@ -50,7 +54,7 @@ int main(void)
     uint32_t vk_instance_layer_property_count;
     vkEnumerateInstanceLayerProperties(&vk_instance_layer_property_count, NULL);
 
-    if (vk_instance_layer_property_count != 0)
+    if (vk_instance_layer_property_count > 0)
     {
         vk_instance_layer_properties = malloc(vk_instance_layer_property_count *
             sizeof(VkLayerProperties));
@@ -71,25 +75,65 @@ int main(void)
 
         for (uint32_t i = 0; i < vk_instance_layer_property_count; ++i)
         {
-            const VkLayerProperties* const properties =
+            const VkLayerProperties* const layer_properties =
                 &vk_instance_layer_properties[i];
 
-            const char* const layer_name = properties->layerName;
+            const char* const layer_name = layer_properties->layerName;
 
             indent(1);
             printf("%s:\n", layer_name);
 
             indent(2);
             printf("Spec version: ");
-            print_vk_version(properties->specVersion);
+            print_vk_version(layer_properties->specVersion);
             printf("\n");
 
             indent(2);
             printf("Implementation version: %u\n",
-                properties->implementationVersion);
+                layer_properties->implementationVersion);
 
             indent(2);
-            printf("Description: %s\n", properties->description);
+            printf("Description: %s\n", layer_properties->description);
+
+            uint32_t extension_property_count;
+            vkEnumerateInstanceExtensionProperties(layer_name,
+                &extension_property_count, NULL);
+
+            if (extension_property_count > 0)
+            {
+                vk_instance_extension_properties = malloc(
+                    extension_property_count * sizeof(VkExtensionProperties));
+
+                if (vk_instance_extension_properties == NULL)
+                {
+                    fputs("Failed to allocate memory for "
+                        "vk_instance_extension_properties\n", stderr);
+
+                    return EXIT_FAILURE;
+                }
+
+                vkEnumerateInstanceExtensionProperties(layer_name,
+                    &extension_property_count,
+                    vk_instance_extension_properties);
+
+                indent(2);
+                printf("vk_instance_extension_properties[%u]:\n",
+                    extension_property_count);
+
+                for (uint32_t j = 0; j < extension_property_count; ++j)
+                {
+                    const VkExtensionProperties* const extension_properties =
+                        &vk_instance_extension_properties[j];
+
+                    indent(3);
+                    printf("%s: ", extension_properties->extensionName);
+                    print_vk_version(extension_properties->specVersion);
+                    printf("\n");
+                }
+
+                free(vk_instance_extension_properties);
+                vk_instance_extension_properties = NULL;
+            }
         }
     }
 
