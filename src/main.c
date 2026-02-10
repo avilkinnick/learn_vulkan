@@ -126,15 +126,56 @@ int main(void)
                         &vk_instance_extension_properties[j];
 
                     indent(3);
-                    printf("%s: ", extension_properties->extensionName);
-                    print_vk_version(extension_properties->specVersion);
-                    printf("\n");
+                    printf("%s v.%u\n", extension_properties->extensionName,
+                        extension_properties->specVersion);
                 }
 
                 free(vk_instance_extension_properties);
                 vk_instance_extension_properties = NULL;
             }
         }
+
+        free(vk_instance_layer_properties);
+        vk_instance_layer_properties = NULL;
+    }
+
+    uint32_t vk_instance_extension_property_count;
+    vkEnumerateInstanceExtensionProperties(NULL,
+        &vk_instance_extension_property_count, NULL);
+
+    if (vk_instance_extension_property_count > 0)
+    {
+        vk_instance_extension_properties = malloc(
+            vk_instance_extension_property_count *
+            sizeof(VkExtensionProperties));
+
+        if (vk_instance_extension_properties == NULL)
+        {
+            fputs("Failed to allocate memory for "
+                "vk_instance_extension_properties\n", stderr);
+
+            return EXIT_FAILURE;
+        }
+
+        vkEnumerateInstanceExtensionProperties(NULL,
+            &vk_instance_extension_property_count,
+            vk_instance_extension_properties);
+
+        printf("vk_instance_extension_properties[%u]:\n",
+            vk_instance_extension_property_count);
+
+        for (uint32_t i = 0; i < vk_instance_extension_property_count; ++i)
+        {
+            const VkExtensionProperties* const properties =
+                &vk_instance_extension_properties[i];
+
+            indent(1);
+            printf("%s v.%u\n", properties->extensionName,
+                properties->specVersion);
+        }
+
+        free(vk_instance_extension_properties);
+        vk_instance_extension_properties = NULL;
     }
 
     return EXIT_SUCCESS;
