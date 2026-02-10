@@ -6,11 +6,19 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+find_package(Vulkan COMPONENTS volk REQUIRED)
+
 add_executable(learn_vulkan)
 
 target_sources(learn_vulkan
     PRIVATE
         src/main.c
+)
+
+target_link_libraries(learn_vulkan
+    PRIVATE
+        Vulkan::Vulkan
+        Vulkan::volk
 )
 
 if(MSVC)
