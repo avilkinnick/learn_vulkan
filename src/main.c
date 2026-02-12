@@ -7,14 +7,18 @@
 
 VkLayerProperties* vk_instance_layer_properties = NULL;
 VkExtensionProperties* vk_instance_extension_properties = NULL;
-VkInstance vk_instance = VK_NULL_HANDLE;
+VkInstance vk_instance = NULL;
+VkPhysicalDevice* vk_physical_devices = NULL;
 
 static void cleanup(void)
 {
-    if (vk_instance != VK_NULL_HANDLE)
+    free(vk_physical_devices);
+    vk_physical_devices = NULL;
+
+    if (vk_instance != NULL)
     {
         vkDestroyInstance(vk_instance, NULL);
-        vk_instance = VK_NULL_HANDLE;
+        vk_instance = NULL;
     }
 
     free(vk_instance_extension_properties);
@@ -291,6 +295,92 @@ int main(void)
     }
 
     volkLoadInstance(vk_instance);
+
+    uint32_t vk_physical_device_count;
+    vkEnumeratePhysicalDevices(vk_instance, &vk_physical_device_count, NULL);
+
+    if (vk_physical_device_count == 0)
+    {
+        fputs("Failed to find physical devices\n", stderr);
+
+        return EXIT_FAILURE;
+    }
+
+    vk_physical_devices = malloc(vk_physical_device_count *
+        sizeof(VkPhysicalDevice));
+
+    if (vk_physical_devices == NULL)
+    {
+        fputs("Failed to allocate memory for vk_physical_devices\n", stderr);
+
+        return EXIT_FAILURE;
+    }
+
+    vkEnumeratePhysicalDevices(vk_instance, &vk_physical_device_count,
+        vk_physical_devices);
+
+    printf("physical_devices[%u]:\n", vk_physical_device_count);
+
+    for (uint32_t i = 0; i < vk_physical_device_count; ++i)
+    {
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceProperties(vk_physical_devices[i], &properties);
+
+        indent(1);
+        printf("%s:\n", properties.deviceName);
+
+        indent(2);
+        printf("API version: ");
+        print_vk_version(properties.apiVersion);
+        printf("\n");
+
+        indent(2);
+        printf("Driver version: ");
+        print_vk_version(properties.driverVersion);
+        printf("\n");
+
+        indent(2);
+        printf("Vendor ID: %u\n", properties.vendorID);
+
+        indent(2);
+        printf("Device ID: %u\n", properties.deviceID);
+
+        indent(2);
+        printf("Device type: ");
+        switch (properties.deviceType)
+        {
+            case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+            {
+                printf("OTHER");
+                break;
+            }
+            case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+            {
+                printf("INTEGRATED_GPU");
+                break;
+            }
+            case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+            {
+                printf("DISCRETE_GPU");
+                break;
+            }
+            case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+            {
+                printf("VIRTUAL_GPU");
+                break;
+            }
+            case VK_PHYSICAL_DEVICE_TYPE_CPU:
+            {
+                printf("CPU");
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+        printf("\n");
+    }
 
     return EXIT_SUCCESS;
 }
