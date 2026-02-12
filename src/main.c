@@ -106,7 +106,6 @@ int main(void)
     if (volkInitialize() != VK_SUCCESS)
     {
         fputs("Failed to initialize volk\n", stderr);
-
         return EXIT_FAILURE;
     }
 
@@ -290,7 +289,6 @@ int main(void)
         VK_SUCCESS)
     {
         fputs("Failed to create Vulkan instance\n", stderr);
-
         return EXIT_FAILURE;
     }
 
@@ -302,7 +300,6 @@ int main(void)
     if (vk_physical_device_count == 0)
     {
         fputs("Failed to find physical devices\n", stderr);
-
         return EXIT_FAILURE;
     }
 
@@ -312,7 +309,6 @@ int main(void)
     if (vk_physical_devices == NULL)
     {
         fputs("Failed to allocate memory for vk_physical_devices\n", stderr);
-
         return EXIT_FAILURE;
     }
 
