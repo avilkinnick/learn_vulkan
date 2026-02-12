@@ -7,9 +7,16 @@
 
 VkLayerProperties* vk_instance_layer_properties = NULL;
 VkExtensionProperties* vk_instance_extension_properties = NULL;
+VkInstance vk_instance = VK_NULL_HANDLE;
 
 static void cleanup(void)
 {
+    if (vk_instance != VK_NULL_HANDLE)
+    {
+        vkDestroyInstance(vk_instance, NULL);
+        vk_instance = VK_NULL_HANDLE;
+    }
+
     free(vk_instance_extension_properties);
     vk_instance_extension_properties = NULL;
 
@@ -40,6 +47,51 @@ static VkBool32 vk_debug_messenger_callback(
     void* pUserData
 )
 {
+    (void)pUserData;
+
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+    {
+        printf("[VERBOSE]");
+    }
+
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+    {
+        printf("[INFO]");
+    }
+
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+    {
+        printf("[WARNING]");
+    }
+
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    {
+        printf("[ERROR]");
+    }
+
+    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+    {
+        printf("[GENERAL]");
+    }
+
+    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+    {
+        printf("[VALIDATION]");
+    }
+
+    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+    {
+        printf("[PERFORMANCE]");
+    }
+
+    if (messageTypes &
+        VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
+    {
+        printf("[DEVICE_ADDRESS_BINDING]");
+    }
+
+    printf(" %s\n", pCallbackData->pMessage);
+
     return VK_FALSE;
 }
 
@@ -187,6 +239,58 @@ int main(void)
         free(vk_instance_extension_properties);
         vk_instance_extension_properties = NULL;
     }
+
+    const VkDebugUtilsMessengerCreateInfoEXT vk_debug_messenger_create_info = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .pNext = NULL,
+        .flags = 0,
+        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+        .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+        .pfnUserCallback = vk_debug_messenger_callback,
+        .pUserData = NULL
+    };
+
+    const VkApplicationInfo vk_application_info = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pNext = NULL,
+        .pApplicationName = NULL,
+        .applicationVersion = 0,
+        .pEngineName = NULL,
+        .engineVersion = 0,
+        .apiVersion = vk_instance_version
+    };
+
+    const char* const vk_enabled_instance_extension_names[] = {
+        "VK_KHR_surface",
+        "VK_EXT_debug_utils"
+    };
+
+    const VkInstanceCreateInfo vk_instance_create_info = {
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pNext = &vk_debug_messenger_create_info,
+        .flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR,
+        .pApplicationInfo = &vk_application_info,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = NULL,
+        .enabledExtensionCount = 2,
+        .ppEnabledExtensionNames = vk_enabled_instance_extension_names
+    };
+
+    if (vkCreateInstance(&vk_instance_create_info, NULL, &vk_instance) !=
+        VK_SUCCESS)
+    {
+        fputs("Failed to create Vulkan instance\n", stderr);
+
+        return EXIT_FAILURE;
+    }
+
+    volkLoadInstance(vk_instance);
 
     return EXIT_SUCCESS;
 }
