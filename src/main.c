@@ -10,9 +10,14 @@ VkExtensionProperties* vk_instance_extension_properties = NULL;
 VkInstance vk_instance = NULL;
 VkDebugUtilsMessengerEXT vk_debug_messenger = NULL;
 VkPhysicalDevice* vk_physical_devices = NULL;
+VkPhysicalDevice vk_physical_device = NULL;
+VkPhysicalDeviceGroupProperties* vk_physical_device_group_properties = NULL;
 
 static void cleanup(void)
 {
+    free(vk_physical_device_group_properties);
+    vk_physical_device_group_properties = NULL;
+
     free(vk_physical_devices);
     vk_physical_devices = NULL;
 
@@ -116,14 +121,14 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    uint32_t vk_instance_version;
+    uint32_t vk_instance_version = 0;
     vkEnumerateInstanceVersion(&vk_instance_version);
 
     fputs("vk_instance_version: ", stdout);
     print_vk_version(vk_instance_version);
     putc('\n', stdout);
 
-    uint32_t vk_instance_layer_property_count;
+    uint32_t vk_instance_layer_property_count = 0;
     vkEnumerateInstanceLayerProperties(&vk_instance_layer_property_count, NULL);
 
     if (vk_instance_layer_property_count > 0)
@@ -167,7 +172,7 @@ int main(void)
             indent(2);
             printf("Description: %s\n", layer_properties->description);
 
-            uint32_t extension_property_count;
+            uint32_t extension_property_count = 0;
             vkEnumerateInstanceExtensionProperties(layer_name,
                 &extension_property_count, NULL);
 
@@ -211,7 +216,7 @@ int main(void)
         vk_instance_layer_properties = NULL;
     }
 
-    uint32_t vk_instance_extension_property_count;
+    uint32_t vk_instance_extension_property_count = 0;
     vkEnumerateInstanceExtensionProperties(NULL,
         &vk_instance_extension_property_count, NULL);
 
@@ -254,8 +259,8 @@ int main(void)
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .pNext = NULL,
         .flags = 0,
-        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+        .messageSeverity = // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            // VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
@@ -309,7 +314,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    uint32_t vk_physical_device_count;
+    uint32_t vk_physical_device_count = 0;
     vkEnumeratePhysicalDevices(vk_instance, &vk_physical_device_count, NULL);
 
     if (vk_physical_device_count == 0)
@@ -318,8 +323,8 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    vk_physical_devices = malloc(vk_physical_device_count *
-        sizeof(VkPhysicalDevice));
+    vk_physical_devices = malloc(sizeof(VkPhysicalDevice) *
+        vk_physical_device_count);
 
     if (vk_physical_devices == NULL)
     {
@@ -330,7 +335,7 @@ int main(void)
     vkEnumeratePhysicalDevices(vk_instance, &vk_physical_device_count,
         vk_physical_devices);
 
-    printf("physical_devices[%u]:\n", vk_physical_device_count);
+    printf("vk_physical_devices[%u]:\n", vk_physical_device_count);
 
     for (uint32_t i = 0; i < vk_physical_device_count; ++i)
     {
@@ -346,12 +351,10 @@ int main(void)
         putc('\n', stdout);
 
         indent(2);
-        fputs("Driver version: ", stdout);
-        print_vk_version(properties.driverVersion);
-        putc('\n', stdout);
+        printf("Driver version: %u\n", properties.driverVersion);
 
         indent(2);
-        printf("Vendor ID: %u\n", properties.vendorID);
+        printf("Vendor ID: 0x%X\n", properties.vendorID);
 
         indent(2);
         printf("Device ID: %u\n", properties.deviceID);
@@ -391,6 +394,59 @@ int main(void)
             }
         }
         putc('\n', stdout);
+    }
+
+    vk_physical_device = vk_physical_devices[0];
+
+    uint32_t vk_physical_device_group_count = 0;
+    vkEnumeratePhysicalDeviceGroups(vk_instance,
+        &vk_physical_device_group_count, NULL);
+
+    if (vk_physical_device_group_count > 0)
+    {
+        vk_physical_device_group_properties = malloc(
+            sizeof(VkPhysicalDeviceGroupProperties) *
+            vk_physical_device_group_count);
+
+        if (vk_physical_device_group_properties == NULL)
+        {
+            fputs("Failed to allocate memory for "
+                "vk_physical_device_group_properties\n", stderr);
+
+            return EXIT_FAILURE;
+        }
+
+        vkEnumeratePhysicalDeviceGroups(vk_instance,
+            &vk_physical_device_group_count,
+            vk_physical_device_group_properties);
+
+        printf("vk_physical_device_group_properties[%u]:\n",
+            vk_physical_device_group_count);
+
+        for (uint32_t i = 0; i < vk_physical_device_group_count; ++i)
+        {
+            const VkPhysicalDeviceGroupProperties* const group_properties =
+                &vk_physical_device_group_properties[i];
+
+            const uint32_t physical_device_count =
+                group_properties->physicalDeviceCount;
+
+            const VkPhysicalDevice* const physical_devices =
+                group_properties->physicalDevices;
+
+            indent(1);
+            printf("Physical devices[%u]: \n", physical_device_count);
+
+            for (uint32_t j = 0; j < physical_device_count; ++j)
+            {
+                VkPhysicalDeviceProperties device_properties;
+                vkGetPhysicalDeviceProperties(physical_devices[j],
+                    &device_properties);
+
+                indent(2);
+                puts(device_properties.deviceName);
+            }
+        }
     }
 
     return EXIT_SUCCESS;
