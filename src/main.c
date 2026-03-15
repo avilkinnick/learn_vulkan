@@ -8,12 +8,19 @@
 VkLayerProperties* vk_instance_layer_properties = NULL;
 VkExtensionProperties* vk_instance_extension_properties = NULL;
 VkInstance vk_instance = NULL;
+VkDebugUtilsMessengerEXT vk_debug_messenger = NULL;
 VkPhysicalDevice* vk_physical_devices = NULL;
 
 static void cleanup(void)
 {
     free(vk_physical_devices);
     vk_physical_devices = NULL;
+
+    if (vk_debug_messenger != NULL)
+    {
+        vkDestroyDebugUtilsMessengerEXT(vk_instance, vk_debug_messenger, NULL);
+        vk_debug_messenger = NULL;
+    }
 
     if (vk_instance != NULL)
     {
@@ -32,7 +39,7 @@ static void indent(const int n)
 {
     for (int i = 0; i < n; ++i)
     {
-        printf("    ");
+        fputs("    ", stdout);
     }
 }
 
@@ -55,43 +62,43 @@ static VkBool32 vk_debug_messenger_callback(
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
     {
-        printf("[VERBOSE]");
+        fputs("[VERBOSE]", stdout);
     }
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
     {
-        printf("[INFO]");
+        fputs("[INFO]", stdout);
     }
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
-        printf("[WARNING]");
+        fputs("[WARNING]", stdout);
     }
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
-        printf("[ERROR]");
+        fputs("[ERROR]", stdout);
     }
 
     if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
     {
-        printf("[GENERAL]");
+        fputs("[GENERAL]", stdout);
     }
 
     if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
     {
-        printf("[VALIDATION]");
+        fputs("[VALIDATION]", stdout);
     }
 
     if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
     {
-        printf("[PERFORMANCE]");
+        fputs("[PERFORMANCE]", stdout);
     }
 
     if (messageTypes &
         VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
     {
-        printf("[DEVICE_ADDRESS_BINDING]");
+        fputs("[DEVICE_ADDRESS_BINDING]", stdout);
     }
 
     printf(" %s\n", pCallbackData->pMessage);
@@ -112,17 +119,17 @@ int main(void)
     uint32_t vk_instance_version;
     vkEnumerateInstanceVersion(&vk_instance_version);
 
-    printf("vk_instance_version: ");
+    fputs("vk_instance_version: ", stdout);
     print_vk_version(vk_instance_version);
-    printf("\n");
+    putc('\n', stdout);
 
     uint32_t vk_instance_layer_property_count;
     vkEnumerateInstanceLayerProperties(&vk_instance_layer_property_count, NULL);
 
     if (vk_instance_layer_property_count > 0)
     {
-        vk_instance_layer_properties = malloc(vk_instance_layer_property_count *
-            sizeof(VkLayerProperties));
+        vk_instance_layer_properties = malloc(sizeof(VkLayerProperties) *
+            vk_instance_layer_property_count);
 
         if (vk_instance_layer_properties == NULL)
         {
@@ -149,9 +156,9 @@ int main(void)
             printf("%s:\n", layer_name);
 
             indent(2);
-            printf("Spec version: ");
+            fputs("Spec version: ", stdout);
             print_vk_version(layer_properties->specVersion);
-            printf("\n");
+            putc('\n', stdout);
 
             indent(2);
             printf("Implementation version: %u\n",
@@ -167,7 +174,7 @@ int main(void)
             if (extension_property_count > 0)
             {
                 vk_instance_extension_properties = malloc(
-                    extension_property_count * sizeof(VkExtensionProperties));
+                    sizeof(VkExtensionProperties) * extension_property_count);
 
                 if (vk_instance_extension_properties == NULL)
                 {
@@ -211,8 +218,8 @@ int main(void)
     if (vk_instance_extension_property_count > 0)
     {
         vk_instance_extension_properties = malloc(
-            vk_instance_extension_property_count *
-            sizeof(VkExtensionProperties));
+            sizeof(VkExtensionProperties) *
+            vk_instance_extension_property_count);
 
         if (vk_instance_extension_properties == NULL)
         {
@@ -294,6 +301,14 @@ int main(void)
 
     volkLoadInstance(vk_instance);
 
+    if (vkCreateDebugUtilsMessengerEXT(vk_instance,
+        &vk_debug_messenger_create_info, NULL, &vk_debug_messenger) !=
+        VK_SUCCESS)
+    {
+        fputs("Failed to create Vulkan debug messenger\n", stderr);
+        return EXIT_FAILURE;
+    }
+
     uint32_t vk_physical_device_count;
     vkEnumeratePhysicalDevices(vk_instance, &vk_physical_device_count, NULL);
 
@@ -326,14 +341,14 @@ int main(void)
         printf("%s:\n", properties.deviceName);
 
         indent(2);
-        printf("API version: ");
+        fputs("API version: ", stdout);
         print_vk_version(properties.apiVersion);
-        printf("\n");
+        putc('\n', stdout);
 
         indent(2);
-        printf("Driver version: ");
+        fputs("Driver version: ", stdout);
         print_vk_version(properties.driverVersion);
-        printf("\n");
+        putc('\n', stdout);
 
         indent(2);
         printf("Vendor ID: %u\n", properties.vendorID);
@@ -342,32 +357,32 @@ int main(void)
         printf("Device ID: %u\n", properties.deviceID);
 
         indent(2);
-        printf("Device type: ");
+        fputs("Device type: ", stdout);
         switch (properties.deviceType)
         {
             case VK_PHYSICAL_DEVICE_TYPE_OTHER:
             {
-                printf("OTHER");
+                fputs("OTHER", stdout);
                 break;
             }
             case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
             {
-                printf("INTEGRATED_GPU");
+                fputs("INTEGRATED_GPU", stdout);
                 break;
             }
             case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
             {
-                printf("DISCRETE_GPU");
+                fputs("DISCRETE_GPU", stdout);
                 break;
             }
             case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
             {
-                printf("VIRTUAL_GPU");
+                fputs("VIRTUAL_GPU", stdout);
                 break;
             }
             case VK_PHYSICAL_DEVICE_TYPE_CPU:
             {
-                printf("CPU");
+                fputs("CPU", stdout);
                 break;
             }
             default:
@@ -375,7 +390,7 @@ int main(void)
                 break;
             }
         }
-        printf("\n");
+        putc('\n', stdout);
     }
 
     return EXIT_SUCCESS;
