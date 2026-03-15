@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 VkLayerProperties* vk_instance_layer_properties = NULL;
-VkExtensionProperties* vk_instance_extension_properties = NULL;
+VkExtensionProperties* vk_extension_properties = NULL;
 VkInstance vk_instance = NULL;
 VkDebugUtilsMessengerEXT vk_debug_messenger = NULL;
 VkPhysicalDevice* vk_physical_devices = NULL;
@@ -33,8 +33,8 @@ static void cleanup(void)
         vk_instance = NULL;
     }
 
-    free(vk_instance_extension_properties);
-    vk_instance_extension_properties = NULL;
+    free(vk_extension_properties);
+    vk_extension_properties = NULL;
 
     free(vk_instance_layer_properties);
     vk_instance_layer_properties = NULL;
@@ -178,10 +178,10 @@ int main(void)
 
             if (extension_property_count > 0)
             {
-                vk_instance_extension_properties = malloc(
-                    sizeof(VkExtensionProperties) * extension_property_count);
+                vk_extension_properties = malloc(sizeof(VkExtensionProperties) *
+                    extension_property_count);
 
-                if (vk_instance_extension_properties == NULL)
+                if (vk_extension_properties == NULL)
                 {
                     fputs("Failed to allocate memory for "
                         "vk_instance_extension_properties\n", stderr);
@@ -190,8 +190,7 @@ int main(void)
                 }
 
                 vkEnumerateInstanceExtensionProperties(layer_name,
-                    &extension_property_count,
-                    vk_instance_extension_properties);
+                    &extension_property_count, vk_extension_properties);
 
                 indent(2);
                 printf("vk_instance_extension_properties[%u]:\n",
@@ -200,20 +199,17 @@ int main(void)
                 for (uint32_t j = 0; j < extension_property_count; ++j)
                 {
                     const VkExtensionProperties* const extension_properties =
-                        &vk_instance_extension_properties[j];
+                        &vk_extension_properties[j];
 
                     indent(3);
                     printf("%s v.%u\n", extension_properties->extensionName,
                         extension_properties->specVersion);
                 }
 
-                free(vk_instance_extension_properties);
-                vk_instance_extension_properties = NULL;
+                free(vk_extension_properties);
+                vk_extension_properties = NULL;
             }
         }
-
-        free(vk_instance_layer_properties);
-        vk_instance_layer_properties = NULL;
     }
 
     uint32_t vk_instance_extension_property_count = 0;
@@ -222,11 +218,10 @@ int main(void)
 
     if (vk_instance_extension_property_count > 0)
     {
-        vk_instance_extension_properties = malloc(
-            sizeof(VkExtensionProperties) *
+        vk_extension_properties = malloc(sizeof(VkExtensionProperties) *
             vk_instance_extension_property_count);
 
-        if (vk_instance_extension_properties == NULL)
+        if (vk_extension_properties == NULL)
         {
             fputs("Failed to allocate memory for "
                 "vk_instance_extension_properties\n", stderr);
@@ -235,8 +230,7 @@ int main(void)
         }
 
         vkEnumerateInstanceExtensionProperties(NULL,
-            &vk_instance_extension_property_count,
-            vk_instance_extension_properties);
+            &vk_instance_extension_property_count, vk_extension_properties);
 
         printf("vk_instance_extension_properties[%u]:\n",
             vk_instance_extension_property_count);
@@ -244,15 +238,15 @@ int main(void)
         for (uint32_t i = 0; i < vk_instance_extension_property_count; ++i)
         {
             const VkExtensionProperties* const properties =
-                &vk_instance_extension_properties[i];
+                &vk_extension_properties[i];
 
             indent(1);
             printf("%s v.%u\n", properties->extensionName,
                 properties->specVersion);
         }
 
-        free(vk_instance_extension_properties);
-        vk_instance_extension_properties = NULL;
+        free(vk_extension_properties);
+        vk_extension_properties = NULL;
     }
 
     const VkDebugUtilsMessengerCreateInfoEXT vk_debug_messenger_create_info = {
@@ -282,8 +276,9 @@ int main(void)
     };
 
     const char* const vk_enabled_instance_extension_names[] = {
-        "VK_KHR_surface",
-        "VK_EXT_debug_utils"
+        VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+        VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+        VK_KHR_SURFACE_EXTENSION_NAME
     };
 
     const VkInstanceCreateInfo vk_instance_create_info = {
@@ -293,7 +288,8 @@ int main(void)
         .pApplicationInfo = &vk_application_info,
         .enabledLayerCount = 0,
         .ppEnabledLayerNames = NULL,
-        .enabledExtensionCount = 2,
+        .enabledExtensionCount = sizeof vk_enabled_instance_extension_names
+            / sizeof(const char*),
         .ppEnabledExtensionNames = vk_enabled_instance_extension_names
     };
 
@@ -435,7 +431,7 @@ int main(void)
                 group_properties->physicalDevices;
 
             indent(1);
-            printf("Physical devices[%u]: \n", physical_device_count);
+            printf("Physical devices[%u]:\n", physical_device_count);
 
             for (uint32_t j = 0; j < physical_device_count; ++j)
             {
@@ -447,6 +443,64 @@ int main(void)
                 puts(device_properties.deviceName);
             }
         }
+
+        free(vk_physical_device_group_properties);
+        vk_physical_device_group_properties = NULL;
+    }
+
+    if (vk_instance_layer_properties != NULL)
+    {
+        puts("Vulkan layer extensions:");
+
+        for (uint32_t i = 0; i < vk_instance_layer_property_count; ++i)
+        {
+            const VkLayerProperties* const layer_properties =
+                &vk_instance_layer_properties[i];
+
+            const char* const layer_name = layer_properties->layerName;
+
+            uint32_t extension_property_count = 0;
+            vkEnumerateDeviceExtensionProperties(vk_physical_device, layer_name,
+                &extension_property_count, NULL);
+
+            if (extension_property_count > 0)
+            {
+                vk_extension_properties = malloc(sizeof(VkExtensionProperties) *
+                    extension_property_count);
+
+                if (vk_extension_properties == NULL)
+                {
+                    fputs("Failed to allocate memory for "
+                        "vk_device_extension_properties\n", stderr);
+
+                    return EXIT_FAILURE;
+                }
+
+                vkEnumerateDeviceExtensionProperties(vk_physical_device,
+                    layer_name, &extension_property_count,
+                    vk_extension_properties);
+
+                indent(1);
+                printf("%s extensions[%u]:\n", layer_name,
+                    extension_property_count);
+
+                for (uint32_t j = 0; j < extension_property_count; ++j)
+                {
+                    const VkExtensionProperties* const extension_properties =
+                        &vk_extension_properties[j];
+
+                    indent(2);
+                    printf("%s v.%u\n", extension_properties->extensionName,
+                        extension_properties->specVersion);
+                }
+
+                free(vk_extension_properties);
+                vk_extension_properties = NULL;
+            }
+        }
+
+        free(vk_instance_layer_properties);
+        vk_instance_layer_properties = NULL;
     }
 
     return EXIT_SUCCESS;
