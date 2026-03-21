@@ -33,14 +33,9 @@ VkLayerProperties* vk_instance_layer_properties = NULL;
 VkInstance vk_instance = NULL;
 VkDebugUtilsMessengerEXT vk_debug_messenger = NULL;
 VkPhysicalDevice* vk_physical_devices = NULL;
-VkPhysicalDevice vk_physical_device = NULL;
-VkPhysicalDeviceGroupProperties* vk_physical_device_group_properties = NULL;
 
 static void cleanup(void)
 {
-    free(vk_physical_device_group_properties);
-    vk_physical_device_group_properties = NULL;
-
     free(vk_physical_devices);
     vk_physical_devices = NULL;
 
@@ -399,7 +394,7 @@ int main(void)
         putc('\n', stdout);
     }
 
-    vk_physical_device = vk_physical_devices[0];
+    const VkPhysicalDevice vk_physical_device = vk_physical_devices[0];
 
     uint32_t vk_physical_device_group_count = 0;
     vkEnumeratePhysicalDeviceGroups(vk_instance,
@@ -407,9 +402,9 @@ int main(void)
 
     if (vk_physical_device_group_count > 0)
     {
-        vk_physical_device_group_properties = malloc(
-            sizeof(VkPhysicalDeviceGroupProperties) *
-            vk_physical_device_group_count);
+        VkPhysicalDeviceGroupProperties* vk_physical_device_group_properties =
+            malloc(sizeof(VkPhysicalDeviceGroupProperties) *
+                vk_physical_device_group_count);
 
         if (vk_physical_device_group_properties == NULL)
         {
