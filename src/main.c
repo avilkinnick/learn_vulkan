@@ -33,9 +33,16 @@ VkLayerProperties* vk_instance_layer_properties = NULL;
 VkInstance vk_instance = NULL;
 VkDebugUtilsMessengerEXT vk_debug_messenger = NULL;
 VkPhysicalDevice* vk_physical_devices = NULL;
+VkDevice vk_device = NULL;
 
 static void cleanup(void)
 {
+    if (vk_device != NULL)
+    {
+        vkDestroyDevice(vk_device, NULL);
+        vk_device = NULL;
+    }
+
     free(vk_physical_devices);
     vk_physical_devices = NULL;
 
@@ -254,8 +261,8 @@ int main(void)
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .pNext = NULL,
         .flags = 0,
-        .messageSeverity = // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-            // VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
@@ -517,6 +524,37 @@ int main(void)
 
     free(vk_queue_family_properties);
     vk_queue_family_properties = NULL;
+
+    const VkDeviceQueueCreateInfo vk_device_queue_create_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .queueFamilyIndex = 0,
+        .queueCount = 1,
+        .pQueuePriorities = &(float){1.0f}
+    };
+
+    const VkDeviceCreateInfo vk_device_create_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &vk_device_queue_create_info,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = NULL,
+        .enabledExtensionCount = 0,
+        .ppEnabledExtensionNames = NULL,
+        .pEnabledFeatures = NULL
+    };
+
+    if (vkCreateDevice(vk_physical_device, &vk_device_create_info, NULL,
+        &vk_device) != VK_SUCCESS)
+    {
+        fputs("Failed to create Vulkan device\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    volkLoadDevice(vk_device);
 
     return EXIT_SUCCESS;
 }
