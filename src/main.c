@@ -5,6 +5,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define PRINT_VK_DEBUG_MESSAGE_SEVERITY_BIT(severity, bit)             \
+    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_##bit##_BIT_EXT)    \
+    {                                                                  \
+        fputs("["#bit"]", stdout);                                     \
+    }
+
+#define PRINT_VK_DEBUG_MESSAGE_TYPE_BIT(types, bit)             \
+    if (types & VK_DEBUG_UTILS_MESSAGE_TYPE_##bit##_BIT_EXT)    \
+    {                                                           \
+        fputs("["#bit"]", stdout);                              \
+    }
+
+#define PRINT_VK_QUEUE_FLAG_BIT(flags, bit)    \
+    if (flags & VK_QUEUE_##bit##_BIT)          \
+    {                                          \
+        fputs(#bit" | ", stdout);              \
+    }
+
+#define PRINT_VK_QUEUE_FLAG_BIT_EXT(flags, bit, ext)    \
+    if (flags & VK_QUEUE_##bit##_BIT_##ext)             \
+    {                                                   \
+        fputs(#bit"_"#ext" | ", stdout);                \
+    }
+
 VkLayerProperties* vk_instance_layer_properties = NULL;
 VkInstance vk_instance = NULL;
 VkDebugUtilsMessengerEXT vk_debug_messenger = NULL;
@@ -61,46 +85,15 @@ static VkBool32 vk_debug_messenger_callback(
 {
     (void)pUserData;
 
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-    {
-        fputs("[VERBOSE]", stdout);
-    }
+    PRINT_VK_DEBUG_MESSAGE_SEVERITY_BIT(messageSeverity, VERBOSE);
+    PRINT_VK_DEBUG_MESSAGE_SEVERITY_BIT(messageSeverity, INFO);
+    PRINT_VK_DEBUG_MESSAGE_SEVERITY_BIT(messageSeverity, WARNING);
+    PRINT_VK_DEBUG_MESSAGE_SEVERITY_BIT(messageSeverity, ERROR);
 
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-    {
-        fputs("[INFO]", stdout);
-    }
-
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-    {
-        fputs("[WARNING]", stdout);
-    }
-
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-    {
-        fputs("[ERROR]", stdout);
-    }
-
-    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
-    {
-        fputs("[GENERAL]", stdout);
-    }
-
-    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
-    {
-        fputs("[VALIDATION]", stdout);
-    }
-
-    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
-    {
-        fputs("[PERFORMANCE]", stdout);
-    }
-
-    if (messageTypes &
-        VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
-    {
-        fputs("[DEVICE_ADDRESS_BINDING]", stdout);
-    }
+    PRINT_VK_DEBUG_MESSAGE_TYPE_BIT(messageTypes, GENERAL);
+    PRINT_VK_DEBUG_MESSAGE_TYPE_BIT(messageTypes, VALIDATION);
+    PRINT_VK_DEBUG_MESSAGE_TYPE_BIT(messageTypes, PERFORMANCE);
+    PRINT_VK_DEBUG_MESSAGE_TYPE_BIT(messageTypes, DEVICE_ADDRESS_BINDING);
 
     printf(" %s\n", pCallbackData->pMessage);
 
@@ -301,8 +294,8 @@ int main(void)
         .pApplicationInfo = &vk_application_info,
         .enabledLayerCount = 0,
         .ppEnabledLayerNames = NULL,
-        .enabledExtensionCount = sizeof vk_enabled_instance_extension_names
-            / sizeof(const char*),
+        .enabledExtensionCount = sizeof vk_enabled_instance_extension_names /
+            sizeof(const char*),
         .ppEnabledExtensionNames = vk_enabled_instance_extension_names
     };
 
@@ -477,6 +470,58 @@ int main(void)
     }
 
     print_vk_extensions(EXTENSION_TYPE_DEVICE, vk_physical_device, NULL, 0);
+
+    uint32_t vk_queue_family_property_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(vk_physical_device,
+        &vk_queue_family_property_count, NULL);
+
+    if (vk_queue_family_property_count == 0)
+    {
+        fputs("Failed to get Vulkan queue family property count\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    VkQueueFamilyProperties* vk_queue_family_properties = malloc(
+        sizeof(VkQueueFamilyProperties) * vk_queue_family_property_count);
+
+    if (vk_queue_family_properties == NULL)
+    {
+        fputs("Failed to allocate memory for "
+            "vk_queue_family_properties\n", stderr);
+
+        return EXIT_FAILURE;
+    }
+
+    vkGetPhysicalDeviceQueueFamilyProperties(vk_physical_device,
+        &vk_queue_family_property_count, vk_queue_family_properties);
+
+    printf("Queue family properties[%u]:\n", vk_queue_family_property_count);
+
+    for (uint32_t i = 0; i < vk_queue_family_property_count; ++i)
+    {
+        const VkQueueFamilyProperties* const properties =
+            &vk_queue_family_properties[i];
+
+        const VkQueueFlags flags = properties->queueFlags;
+
+        indent(1);
+
+        PRINT_VK_QUEUE_FLAG_BIT(flags, GRAPHICS);
+        PRINT_VK_QUEUE_FLAG_BIT(flags, COMPUTE);
+        PRINT_VK_QUEUE_FLAG_BIT(flags, TRANSFER);
+        PRINT_VK_QUEUE_FLAG_BIT(flags, SPARSE_BINDING);
+        PRINT_VK_QUEUE_FLAG_BIT(flags, PROTECTED);
+
+        PRINT_VK_QUEUE_FLAG_BIT_EXT(flags, VIDEO_DECODE, KHR);
+        PRINT_VK_QUEUE_FLAG_BIT_EXT(flags, VIDEO_ENCODE, KHR);
+        PRINT_VK_QUEUE_FLAG_BIT_EXT(flags, OPTICAL_FLOW, NV);
+        PRINT_VK_QUEUE_FLAG_BIT_EXT(flags, DATA_GRAPH, ARM);
+
+        printf("%u\n", properties->queueCount);
+    }
+
+    free(vk_queue_family_properties);
+    vk_queue_family_properties = NULL;
 
     return EXIT_SUCCESS;
 }
